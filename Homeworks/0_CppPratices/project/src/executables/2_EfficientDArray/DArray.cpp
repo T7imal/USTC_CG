@@ -1,5 +1,6 @@
 // implementation of class DArray
 #include "DArray.h"
+#include <iostream>
 
 // default constructor
 DArray::DArray() {
@@ -9,10 +10,24 @@ DArray::DArray() {
 // set an array with default values
 DArray::DArray(int nSize, double dValue) {
 	//TODO
+	m_nSize = nSize;
+	m_nMax = 1;
+	while (m_nMax < nSize)
+		m_nMax <<= 1;
+	m_pData = new double[m_nMax];
+	for (int i = 0; i < nSize; ++i) {
+		m_pData[i] = dValue;
+	}
 }
 
 DArray::DArray(const DArray& arr) {
 	//TODO
+	m_nSize = arr.m_nSize;
+	m_nMax = arr.m_nMax;
+	m_pData = new double[m_nMax];
+	for (int i = 0; i < m_nSize; ++i) {
+		m_pData[i] = arr[i];
+	}
 }
 
 // deconstructor
@@ -23,72 +38,150 @@ DArray::~DArray() {
 // display the elements of the array
 void DArray::Print() const {
 	//TODO
+	for (int i = 0; i < m_nSize; ++i) {
+		std::cout << m_pData[i] << " ";
+	}
+	std::cout << std::endl;
 }
 
 // initilize the array
 void DArray::Init() {
 	//TODO
+	m_nSize = 0;
+	m_nMax = 1;
+	m_pData = new double[1];
 }
 
 // free the array
 void DArray::Free() {
 	//TODO
+	delete(m_pData);
 }
 
 // get the size of the array
 int DArray::GetSize() const {
 	//TODO
-	return 0; // you should return a correct value
+	return m_nSize;
 }
 
 // set the size of the array
 void DArray::SetSize(int nSize) {
 	//TODO
+	if (nSize == m_nSize || nSize < 0) return;
+	if (nSize < m_nSize) {
+		m_nSize = nSize;
+	}
+	else {
+		if (nSize < m_nMax) {
+			m_nSize = nSize;
+			for (int i = m_nSize; i < nSize; ++i)
+				m_pData[i] = 0;
+		}
+		else {
+			while (m_nMax < nSize)
+				m_nMax <<= 1;
+			double* tmp = new double[m_nMax];
+			for (int i = 0; i < m_nSize; ++i) {
+				tmp[i] = m_pData[i];
+			}
+			for (int i = m_nSize; i < nSize; ++i) {
+				tmp[i] = 0;
+			}
+			delete(m_pData);
+			m_nSize = nSize;
+			m_pData = tmp;
+		}
+	}
 }
 
 // get an element at an index
 const double& DArray::GetAt(int nIndex) const {
 	//TODO
-	static double ERROR; // you should delete this line
-	return ERROR; // you should return a correct value
+	return m_pData[nIndex];
 }
 
 // set the value of an element 
 void DArray::SetAt(int nIndex, double dValue) {
 	//TODO
+	m_pData[nIndex] = dValue;
 }
 
 // overload operator '[]'
 double& DArray::operator[](int nIndex) {
 	// TODO
-	static double ERROR; // you should delete this line
-	return ERROR; // you should return a correct value
+	return m_pData[nIndex];
 }
 
 // overload operator '[]'
 const double& DArray::operator[](int nIndex) const {
 	//TODO
-	static double ERROR; // you should delete this line
-	return ERROR; // you should return a correct value
+	return m_pData[nIndex];
 }
 
 // add a new element at the end of the array
 void DArray::PushBack(double dValue) {
 	//TODO
+	if (m_nSize < m_nMax)
+		m_pData[m_nSize++] = dValue;
+	else {
+		m_nMax <<= 1;
+		double* tmp = new double[m_nMax];
+		for (int i = 0; i < m_nSize; ++i) {
+			tmp[i] = m_pData[i];
+		}
+		tmp[m_nSize++] = dValue;
+		delete(m_pData);
+		m_pData = tmp;
+	}
 }
 
 // delete an element at some index
 void DArray::DeleteAt(int nIndex) {
 	//TODO
+	if (nIndex < 0 || nIndex >= m_nSize) return;
+	for (int i = nIndex; i < m_nSize - 1; ++i) {
+		m_pData[i] = m_pData[i + 1];
+	}
+	m_nSize--;
 }
 
 // insert a new element at some index
 void DArray::InsertAt(int nIndex, double dValue) {
 	//TODO
+	if (nIndex < 0 || nIndex > m_nSize) return;
+	if (m_nSize < m_nMax) {
+		for (int i = m_nSize; i > nIndex; --i)
+			m_pData[i] = m_pData[i - 1];
+		m_pData[nIndex] = dValue;
+		m_nSize++;
+	}
+	else {
+		m_nMax <<= 1;
+		double* tmp = new double[m_nMax];
+		for (int i = 0; i < nIndex; ++i) {
+			tmp[i] = m_pData[i];
+		}
+		tmp[nIndex] = dValue;
+		for (int i = nIndex + 1; i < m_nSize + 1; ++i) {
+			tmp[i] = m_pData[i - 1];
+		}
+		delete(m_pData);
+		m_nSize++;
+		m_pData = tmp;
+	}
 }
 
 // overload operator '='
 DArray& DArray::operator = (const DArray& arr) {
 	//TODO
-	return *this;
+	if (this == &arr) return *this;
+	else {
+		delete(m_pData);
+		m_nSize = arr.m_nSize;
+		m_pData = new double[m_nSize];
+		for (int i = 0; i < m_nSize; ++i) {
+			m_pData[i] = arr[i];
+		}
+		return *this;
+	}
 }
