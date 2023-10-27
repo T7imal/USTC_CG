@@ -5,6 +5,8 @@
 #include "Shape.h"
 #include "Line.h"
 #include "Rect.h"
+#include "Elli.h"
+#include "Poly.h"
 
 #include <qevent.h>
 #include <qpainter.h>
@@ -12,8 +14,7 @@
 
 #include <vector>
 
-class ViewWidget : public QWidget
-{
+class ViewWidget : public QWidget {
 	Q_OBJECT
 
 public:
@@ -43,5 +44,6 @@ signals:
 public slots:
 	void setLine();
 	void setRect();
-
+	void setElli();
+	void setPoly();
 };

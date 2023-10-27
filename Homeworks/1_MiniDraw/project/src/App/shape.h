@@ -2,8 +2,7 @@
 
 #include <QtGui>
 
-class Shape
-{
+class Shape {
 public:
 	Shape();
 	virtual ~Shape();
@@ -12,11 +11,12 @@ public:
 	void set_end(QPoint e);
 
 public:
-	enum Type
-	{
+	enum Type {
 		kDefault = 0,
 		kLine = 1,
 		kRect = 2,
+		kElli = 3,
+		kPoly = 4,
 	};
 
 protected:
