@@ -5,9 +5,8 @@
 #include "ImageWidget.h"
 
 
-MainWindow::MainWindow(QWidget *parent)
-	: QMainWindow(parent)
-{
+MainWindow::MainWindow(QWidget* parent)
+	: QMainWindow(parent) {
 	//ui.setupUi(this);
 
 	setGeometry(300, 150, 800, 450);
@@ -21,23 +20,19 @@ MainWindow::MainWindow(QWidget *parent)
 	CreateStatusBar();
 }
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
 
 }
 
-void MainWindow::closeEvent(QCloseEvent *e)
-{
+void MainWindow::closeEvent(QCloseEvent* e) {
 
 }
 
-void MainWindow::paintEvent(QPaintEvent* paintevent)
-{
-	
+void MainWindow::paintEvent(QPaintEvent* paintevent) {
+
 }
 
-void MainWindow::CreateActions()
-{
+void MainWindow::CreateActions() {
 	action_new_ = new QAction(QIcon(":/MainWindow/Resources/images/new.jpg"), tr("&New"), this);
 	action_new_->setShortcut(QKeySequence::New);
 	action_new_->setStatusTip(tr("Create a new file"));
@@ -74,13 +69,24 @@ void MainWindow::CreateActions()
 	action_gray_->setStatusTip(tr("Gray-scale map"));
 	connect(action_gray_, &QAction::triggered, imagewidget_, &ImageWidget::TurnGray);
 
+	action_IDW_ = new QAction(tr("IDW"), this);
+	action_IDW_->setStatusTip(tr("Inverse distance-weighted interpolation methods"));
+	connect(action_IDW_, &QAction::triggered, imagewidget_, &ImageWidget::IDW);
+
+	action_RBF_ = new QAction(tr("RBF"), this);
+	action_RBF_->setStatusTip(tr("Radial basis functions interpolation method"));
+	connect(action_RBF_, &QAction::triggered, imagewidget_, &ImageWidget::RBF);
+
+	action_interpolate_ = new QAction(tr("Interpolate"), this);
+	action_interpolate_->setStatusTip(tr("Do IDW or RBF interpolation"));
+	connect(action_interpolate_, &QAction::triggered, imagewidget_, &ImageWidget::Interpolate);
+
 	action_restore_ = new QAction(tr("Restore"), this);
 	action_restore_->setStatusTip(tr("Show origin image"));
 	connect(action_restore_, &QAction::triggered, imagewidget_, &ImageWidget::Restore);
 }
 
-void MainWindow::CreateMenus()
-{
+void MainWindow::CreateMenus() {
 	menu_file_ = menuBar()->addMenu(tr("&File"));
 	menu_file_->setStatusTip(tr("File menu"));
 	menu_file_->addAction(action_new_);
@@ -96,8 +102,7 @@ void MainWindow::CreateMenus()
 	menu_edit_->addAction(action_restore_);
 }
 
-void MainWindow::CreateToolBars()
-{
+void MainWindow::CreateToolBars() {
 	toolbar_file_ = addToolBar(tr("File"));
 	toolbar_file_->addAction(action_new_);
 	toolbar_file_->addAction(action_open_);
@@ -108,10 +113,12 @@ void MainWindow::CreateToolBars()
 	toolbar_file_->addAction(action_invert_);
 	toolbar_file_->addAction(action_mirror_);
 	toolbar_file_->addAction(action_gray_);
+	toolbar_file_->addAction(action_IDW_);
+	toolbar_file_->addAction(action_RBF_);
+	toolbar_file_->addAction(action_interpolate_);
 	toolbar_file_->addAction(action_restore_);
 }
 
-void MainWindow::CreateStatusBar()
-{
+void MainWindow::CreateStatusBar() {
 	statusBar()->showMessage(tr("Ready"));
 }
