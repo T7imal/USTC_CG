@@ -3,6 +3,7 @@
 #include <QPainter>
 #include <QtWidgets> 
 #include <iostream>
+#include <vector>
 
 using std::cout;
 using std::endl;
@@ -179,6 +180,7 @@ void ImageWidget::Interpolate() {
 						image->setPixel(q_points[k].x(), q_points[k].y(), ptr_image_->pixel(i, j));
 						break;
 					}
+					// D_i={0, 0, 0, 0}
 					x += pow(distance, -mu) * q_points[k].x();
 					y += pow(distance, -mu) * q_points[k].y();
 					sigma_sum += pow(distance, -mu);
@@ -193,7 +195,55 @@ void ImageWidget::Interpolate() {
 		*(ptr_image_) = *image;
 	}
 	else if (RBF_status_) {
-
+		double mu = 1.0;
+		// 半径平方
+		std::vector<double> radius_2;
+		for (int i = 0; i < p_points.size(); ++i) {
+			double min = 1000000;
+			for (int j = 0; j < p_points.size(); ++j) {
+				double distance_2 = pow(p_points[i].x() - p_points[j].x(), 2) + pow(p_points[i].y() - p_points[j].y(), 2);
+				if (distance_2 < min)min = distance_2;
+			}
+			radius_2.push_back(min);
+		}
+		// q - p 矩阵
+		Eigen::MatrixX2d qMinusP(p_points.size(), 2);
+		for (int i = 0; i < p_points.size(); ++i) {
+			qMinusP(i, 0) = double(q_points[i].x() - p_points[i].x());
+			qMinusP(i, 1) = double(q_points[i].y() - p_points[i].y());
+		}
+		// 径向基函数
+		Eigen::MatrixXd R(p_points.size(), p_points.size());
+		for (int i = 0; i < p_points.size(); ++i) {
+			for (int j = 0; j < p_points.size(); ++j) {
+				double distance_2 = pow(p_points[i].x() - p_points[j].x(), 2) + pow(p_points[i].y() - p_points[j].y(), 2);
+				R(i, j) = pow(distance_2 + radius_2[i], mu / 2);
+			}
+		}
+		// R alpha = qMinusP
+		Eigen::MatrixX2d alpha = R.colPivHouseholderQr().solve(qMinusP);
+		QImage* image = new QImage(ptr_image_->width(), ptr_image_->height(), QImage::Format_RGB32);
+		for (int i = 0; i < ptr_image_->width(); ++i) {
+			for (int j = 0; j < ptr_image_->height(); ++j) {
+				double x = i, y = j;
+				bool flag = false;
+				for (int k = 0; k < p_points.size(); ++k) {
+					double distance_2 = pow(i - p_points[k].x(), 2) + pow(j - p_points[k].y(), 2);
+					if (Eigen::Vector2i(i, j) == p_points[k]) {
+						flag = true;
+						image->setPixel(q_points[k].x(), q_points[k].y(), ptr_image_->pixel(i, j));
+						break;
+					}
+					x += pow(distance_2 + radius_2[k], mu / 2) * alpha(k, 0);
+					y += pow(distance_2 + radius_2[k], mu / 2) * alpha(k, 1);
+				}
+				if (!flag) {
+					if ((int)x >= 0 && (int)x < ptr_image_->width() && (int)y >= 0 && (int)y < ptr_image_->height())
+						image->setPixel((int)x, (int)y, ptr_image_->pixel(i, j));
+				}
+			}
+		}
+		*(ptr_image_) = *image;
 	}
 	else {
 		QMessageBox::warning(this, tr("Warning"), tr("Please select a interpolation method!"));
@@ -220,7 +270,7 @@ void ImageWidget::mousePressEvent(QMouseEvent* event) {
 	if (event->button() == Qt::LeftButton) {
 		start_point_ = event->pos();
 		end_point_ = event->pos();
-		if (IDW_status_) {
+		if (IDW_status_ || RBF_status_) {
 			QPoint point = event->pos() - QPoint((width() - ptr_image_->width()) / 2, (height() - ptr_image_->height()) / 2);
 			// cout << qRed(ptr_image_->pixel(point)) << ' ' << qGreen(ptr_image_->pixel(point)) << ' ' << qBlue(ptr_image_->pixel(point)) << endl;
 			p_points.push_back(Eigen::Vector2i(point.x(), point.y()));
@@ -232,17 +282,13 @@ void ImageWidget::mousePressEvent(QMouseEvent* event) {
 
 void ImageWidget::mouseMoveEvent(QMouseEvent* event) {
 	end_point_ = event->pos();
-	if (IDW_status_) {
-
-	}
-
 	update();
 }
 
 void ImageWidget::mouseReleaseEvent(QMouseEvent* event) {
 	if (event->button() == Qt::LeftButton) {
 		end_point_ = event->pos();
-		if (IDW_status_) {
+		if (IDW_status_ || RBF_status_) {
 			QPoint point = event->pos() - QPoint((width() - ptr_image_->width()) / 2, (height() - ptr_image_->height()) / 2);
 			q_points.push_back(Eigen::Vector2i(point.x(), point.y()));
 			draw_status_ = false;
