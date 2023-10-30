@@ -10,9 +10,10 @@ Ubpa_InitProject()
 
 Ubpa_QtInit(COMPONENTS Widgets)
 
-set(USE_ANN FALSE CACHE BOOL "use ANN")
-if(USE_ANN)
-  Ubpa_AddDep(UANN 0.2.0)
-endif()
+# set(USE_ANN FALSE CACHE BOOL "use ANN")
 
+# if(USE_ANN)
+Ubpa_AddDep(UANN 0.2.0)
+
+# endif()
 Ubpa_AddSubDirsRec(src)

@@ -4,6 +4,7 @@
 #include <QtWidgets> 
 #include <iostream>
 #include <vector>
+#include <ANN/ANN.h>					// ANN declarations
 
 using std::cout;
 using std::endl;
@@ -165,6 +166,12 @@ void ImageWidget::Interpolate() {
 		QMessageBox::warning(this, tr("Warning"), tr("Please select a interpolation method!"));
 		return;
 	}
+	bool* interpolated = new bool[ptr_image_->width() * ptr_image_->height()];
+	for (int i = 0; i < ptr_image_->width() * ptr_image_->height(); ++i) {
+		interpolated[i] = false;
+	}
+	ANNpointArray dataPts = annAllocPts(ptr_image_->width() * ptr_image_->height(), 2);
+	int interpolatedNum = 0;
 	if (IDW_status_) {
 		double mu = 2.0;
 		QImage* image = new QImage(ptr_image_->width(), ptr_image_->height(), QImage::Format_RGB32);
@@ -178,6 +185,9 @@ void ImageWidget::Interpolate() {
 					if (Eigen::Vector2i(i, j) == p_points[k]) {
 						flag = true;
 						image->setPixel(q_points[k].x(), q_points[k].y(), ptr_image_->pixel(i, j));
+						interpolated[q_points[k].x() * ptr_image_->height() + q_points[k].y()] = true;
+						dataPts[interpolatedNum][0] = q_points[k].x();
+						dataPts[interpolatedNum++][1] = q_points[k].y();
 						break;
 					}
 					// D_i={0, 0, 0, 0}
@@ -189,6 +199,9 @@ void ImageWidget::Interpolate() {
 					x /= sigma_sum;
 					y /= sigma_sum;
 					image->setPixel((int)x, (int)y, ptr_image_->pixel(i, j));
+					interpolated[(int)x * ptr_image_->height() + (int)y] = true;
+					dataPts[interpolatedNum][0] = (int)x;
+					dataPts[interpolatedNum++][1] = (int)y;
 				}
 			}
 		}
@@ -232,14 +245,21 @@ void ImageWidget::Interpolate() {
 					if (Eigen::Vector2i(i, j) == p_points[k]) {
 						flag = true;
 						image->setPixel(q_points[k].x(), q_points[k].y(), ptr_image_->pixel(i, j));
+						interpolated[q_points[k].x() * ptr_image_->height() + q_points[k].y()] = true;
+						dataPts[interpolatedNum][0] = q_points[k].x();
+						dataPts[interpolatedNum++][1] = q_points[k].y();
 						break;
 					}
 					x += pow(distance_2 + radius_2[k], mu / 2) * alpha(k, 0);
 					y += pow(distance_2 + radius_2[k], mu / 2) * alpha(k, 1);
 				}
 				if (!flag) {
-					if ((int)x >= 0 && (int)x < ptr_image_->width() && (int)y >= 0 && (int)y < ptr_image_->height())
+					if ((int)x >= 0 && (int)x < ptr_image_->width() && (int)y >= 0 && (int)y < ptr_image_->height()) {
 						image->setPixel((int)x, (int)y, ptr_image_->pixel(i, j));
+						interpolated[(int)x * ptr_image_->height() + (int)y] = true;
+						dataPts[interpolatedNum][0] = (int)x;
+						dataPts[interpolatedNum++][1] = (int)y;
+					}
 				}
 			}
 		}
@@ -248,6 +268,25 @@ void ImageWidget::Interpolate() {
 	else {
 		QMessageBox::warning(this, tr("Warning"), tr("Please select a interpolation method!"));
 	}
+	ANNkd_tree* kdTree = new ANNkd_tree(dataPts, interpolatedNum, 2);
+	for (int i = 0; i < ptr_image_->width(); ++i) {
+		for (int j = 0; j < ptr_image_->height(); ++j) {
+			if (!interpolated[i * ptr_image_->height() + j]) {
+				ANNpoint queryPt = annAllocPt(2);
+				queryPt[0] = i;
+				queryPt[1] = j;
+				ANNidxArray nnIdx = new ANNidx[1];
+				ANNdistArray dists = new ANNdist[1];
+				kdTree->annkSearch(queryPt, 1, nnIdx, dists);
+				ptr_image_->setPixel(i, j, ptr_image_->pixel(dataPts[nnIdx[0]][0], dataPts[nnIdx[0]][1]));
+				delete[] nnIdx;
+				delete[] dists;
+				annDeallocPt(queryPt);
+			}
+		}
+	}
+	annDeallocPts(dataPts);
+	delete kdTree;
 	p_points.clear();
 	q_points.clear();
 	rect_list_.clear();
