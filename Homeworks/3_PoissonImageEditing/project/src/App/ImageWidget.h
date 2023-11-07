@@ -1,5 +1,9 @@
 #pragma once
 #include <QWidget>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/core.hpp>
+#include "PoissonSolver.h"
 
 class ChildWindow;
 QT_BEGIN_NAMESPACE
@@ -7,34 +11,38 @@ class QImage;
 class QPainter;
 QT_END_NAMESPACE
 
-enum DrawStatus
-{
-	kChoose, 
-	kPaste, 
+enum DrawStatus {
+	kChooseRect,
+	kChoosePolygon,
+	kPaste,
+	kPastePossion,
+	kPasteMixed,
 	kNone
 };
 
 class ImageWidget :
-	public QWidget
-{
+	public QWidget {
 	Q_OBJECT
 
 public:
-	ImageWidget(ChildWindow *relatewindow);
+	ImageWidget(ChildWindow* relatewindow);
 	~ImageWidget(void);
 
 	int ImageWidth();											// Width of image
 	int ImageHeight();											// Height of image
-	void set_draw_status_to_choose();
+	void set_draw_status_to_choose_rect();
+	void set_draw_status_to_choose_polygon();
 	void set_draw_status_to_paste();
-	QImage* image();
+	void set_draw_status_to_paste_possion();
+	void set_draw_status_to_paste_mixed();
+	cv::Mat image();
 	void set_source_window(ChildWindow* childwindow);
 
 protected:
-	void paintEvent(QPaintEvent *paintevent);
-	void mousePressEvent(QMouseEvent *mouseevent);
-	void mouseMoveEvent(QMouseEvent *mouseevent);
-	void mouseReleaseEvent(QMouseEvent *mouseevent);
+	void paintEvent(QPaintEvent* paintevent);
+	void mousePressEvent(QMouseEvent* mouseevent);
+	void mouseMoveEvent(QMouseEvent* mouseevent);
+	void mouseReleaseEvent(QMouseEvent* mouseevent);
 
 public slots:
 	// File IO
@@ -44,20 +52,21 @@ public slots:
 
 	// Image processing
 	void Invert();												// Invert pixel value in image
-	void Mirror(bool horizontal=false, bool vertical=true);		// Mirror image vertically or horizontally
+	void Mirror(bool horizontal = false, bool vertical = true);		// Mirror image vertically or horizontally
 	void TurnGray();											// Turn image to gray-scale map
 	void Restore();												// Restore image to origin
 
 public:
 	QPoint						point_start_;					// Left top point of rectangle region
 	QPoint						point_end_;						// Right bottom point of rectangle region
+	QVector<QPoint>			polygon_points_;				// Points of polygon region
 
 private:
-	QImage						*image_;						// image 
-	QImage						*image_backup_;
+	cv::Mat image_;						// image 
+	cv::Mat image_backup_;
 
 	// Pointer of child window
-	ChildWindow					*source_window_;				// Source child window
+	ChildWindow* source_window_;				// Source child window
 
 	// Signs
 	DrawStatus					draw_status_;					// Enum type of draw status

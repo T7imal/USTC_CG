@@ -13,12 +13,11 @@ class QMdiSubWindow;
 class QSignalMapper;
 QT_END_NAMESPACE
 
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
 	Q_OBJECT
 
 public:
-	MainWindow(QWidget *parent = 0);
+	MainWindow(QWidget* parent = 0);
 	~MainWindow();
 
 private slots:
@@ -27,7 +26,7 @@ private slots:
 	void Open();								// Open an existing file
 	void Save();								// Save image to file
 	void SaveAs();
-	ChildWindow *CreateChildWindow();
+	ChildWindow* CreateChildWindow();
 	void SetActiveSubWindow(QWidget* window);
 
 	// Image Processing
@@ -38,7 +37,10 @@ private slots:
 
 	// Poisson Image Editing
 	void ChooseRect();							// Choose rectangle region
+	void ChoosePolygon();
 	void Paste();								// Paste rect region to object image
+	void PastePossion();
+	void PasteMixed();
 
 private:
 	void CreateActions();
@@ -46,35 +48,38 @@ private:
 	void CreateToolBars();
 	void CreateStatusBar();
 
-	QMdiSubWindow *FindChild(const QString &filename);
+	QMdiSubWindow* FindChild(const QString& filename);
 	ChildWindow* GetChildWindow();
-	
+
 private:
 	Ui::MainWindowClass ui;
 
-	QMenu						*menu_file_;
-	QMenu						*menu_edit_;
-	QMenu						*menu_help_;
-	QToolBar					*toolbar_file_;
-	QToolBar					*toolbar_edit_;
-//	QAction						*action_new_;
-	QAction						*action_open_;
-	QAction						*action_save_;
-	QAction						*action_saveas_;
+	QMenu* menu_file_;
+	QMenu* menu_edit_;
+	QMenu* menu_help_;
+	QToolBar* toolbar_file_;
+	QToolBar* toolbar_edit_;
+	//	QAction						*action_new_;
+	QAction* action_open_;
+	QAction* action_save_;
+	QAction* action_saveas_;
 
-	QAction						*action_invert_;
-	QAction						*action_mirror_;
-	QAction						*action_gray_;
-	QAction						*action_restore_;
+	QAction* action_invert_;
+	QAction* action_mirror_;
+	QAction* action_gray_;
+	QAction* action_restore_;
 
-	QAction						*action_choose_polygon_;
-	QAction						*action_copy_;
-	QAction						*action_paste_;
+	QAction* action_choose_rect_;
+	QAction* action_choose_polygon_;
+	// QAction* action_copy_;
+	QAction* action_paste_;
+	QAction* action_paste_possion_;
+	QAction* action_paste_mixed_;
 
-	QMdiArea					*mdi_area_;
-	QSignalMapper				*window_mapper_;
+	QMdiArea* mdi_area_;
+	QSignalMapper* window_mapper_;
 
-	ChildWindow					*child_source_;
+	ChildWindow* child_source_;
 };
 
 #endif // MAINWINDOW_H
