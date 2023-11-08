@@ -10,8 +10,7 @@ using namespace std;
 using namespace Eigen;
 
 MinSurf::MinSurf(Ptr<TriMesh> triMesh)
-	: heMesh(make_shared<HEMesh<V>>())
-{
+	: heMesh(make_shared<HEMesh<V>>()) {
 	Init(triMesh);
 }
 
@@ -88,6 +87,59 @@ bool MinSurf::Run() {
 
 void MinSurf::Minimize() {
 	// TODO
-	cout << "WARNING::MinSurf::Minimize:" << endl
-		<< "\t" << "not implemented" << endl;
+	size_t nV = heMesh->NumVertices();
+	// 计算微分坐标左矩阵
+	vector<Triplet<double>> L;
+	for (size_t i = 0; i < nV; i++) {
+		auto vi = heMesh->Vertices().at(i);
+		L.push_back(Triplet<double>(i, i, 1));
+		if (!vi->IsBoundary()) {
+			for (auto vj : vi->AdjVertices()) {
+				L.push_back(Triplet<double>(i, heMesh->Index(vj), -1.0 / vi->Degree()));
+			}
+		}
+	}
+	SparseMatrix<double> Lmat(nV, nV);
+	Lmat.setFromTriplets(L.begin(), L.end());
+	Lmat.makeCompressed();
+
+	SimplicialLDLT<SparseMatrix<double>> solver;
+	solver.compute(Lmat);
+	if (solver.info() != Success) {
+		cout << "WARNING::MinSurf::Minimize:" << endl
+			<< "\t" << "solver decompose fail" << endl;
+		return;
+	}
+
+	// 计算三个维度右矩阵
+	VectorXd bx(nV), by(nV), bz(nV);
+	bx.setZero(); by.setZero(); bz.setZero();
+	VectorXd x(nV), y(nV), z(nV);
+	x.setZero(); y.setZero(); z.setZero();
+
+	//固定边界
+	for (size_t i = 0; i < nV; i++) {
+		auto vi = heMesh->Vertices().at(i);
+		if (vi->IsBoundary()) {
+			bx(i) = vi->pos[0];
+			by(i) = vi->pos[1];
+			bz(i) = vi->pos[2];
+		}
+	}
+
+	// 求解坐标
+	x = solver.solve(bx);
+	y = solver.solve(by);
+	z = solver.solve(bz);
+
+	// 更新坐标
+	for (size_t i = 0; i < nV; i++) {
+		auto vi = heMesh->Vertices().at(i);
+		vi->pos.at(0) = x(i);
+		vi->pos.at(1) = y(i);
+		vi->pos.at(2) = z(i);
+	}
+
+	// cout << "WARNING::MinSurf::Minimize:" << endl
+	// 	<< "\t" << "not implemented" << endl;
 }
