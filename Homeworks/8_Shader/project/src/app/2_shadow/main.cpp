@@ -16,13 +16,14 @@ using namespace Ubpa;
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void processInput(GLFWwindow *window);
+void processInput(GLFWwindow* window);
 gl::Texture2D loadTexture(char const* path);
 
 // settings
 unsigned int scr_width = 800;
 unsigned int scr_height = 600;
-bool have_shadow = false;
+bool have_shadow = true;
+pointf3 light_pos(0, 5, 0);
 
 // camera
 Camera camera(pointf3(0.0f, 0.0f, 3.0f));
@@ -31,220 +32,247 @@ float lastY = scr_height / 2.0f;
 bool firstMouse = true;
 
 // timing
-float deltaTime = 0.0f;	// time between current frame and last frame
+float deltaTime = 0.0f;    // time between current frame and last frame
 float lastFrame = 0.0f;
 
 int main()
 {
-    // glfw: initialize and configure
-    // ------------------------------
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	// glfw: initialize and configure
+	// ------------------------------
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
 #endif
 
-    // glfw window creation
-    // --------------------
-    GLFWwindow* window = glfwCreateWindow(scr_width, scr_height, "HW8 - shadow", NULL, NULL);
-    if (window == NULL)
-    {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
+	// glfw window creation
+	// --------------------
+	GLFWwindow* window = glfwCreateWindow(scr_width, scr_height, "HW8 - shadow", NULL, NULL);
+	if (window == NULL)
+	{
+		std::cout << "Failed to create GLFW window" << std::endl;
+		glfwTerminate();
+		return -1;
+	}
+	glfwMakeContextCurrent(window);
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetScrollCallback(window, scroll_callback);
 
-    // tell GLFW to capture our mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	// tell GLFW to capture our mouse
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
+	// glad: load all OpenGL function pointers
+	// ---------------------------------------
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		std::cout << "Failed to initialize GLAD" << std::endl;
+		return -1;
+	}
 
-    // configure global opengl state
-    // -----------------------------
-    gl::Enable(gl::Capability::DepthTest);
+	// configure global opengl state
+	// -----------------------------
+	gl::Enable(gl::Capability::DepthTest);
 
-    // build and compile our shader zprogram
-    // ------------------------------------
-    gl::Shader p3t2n3_vs(gl::ShaderType::VertexShader, "../data/shaders/p3t2n3.vert");
-    gl::Shader p3_vs(gl::ShaderType::VertexShader, "../data/shaders/p3.vert");
+	// build and compile our shader zprogram
+	// ------------------------------------
+	gl::Shader p3t2n3_vs(gl::ShaderType::VertexShader, "../data/shaders/p3t2n3.vert");
+	gl::Shader p3_vs(gl::ShaderType::VertexShader, "../data/shaders/p3.vert");
 
-    gl::Shader light_shadow_fs(gl::ShaderType::FragmentShader, "../data/shaders/light_shadow.frag");
-    gl::Shader empty_fs(gl::ShaderType::FragmentShader, "../data/shaders/empty.frag");
+	gl::Shader light_shadow_fs(gl::ShaderType::FragmentShader, "../data/shaders/light_shadow.frag");
+	gl::Shader empty_fs(gl::ShaderType::FragmentShader, "../data/shaders/empty.frag");
 
-    gl::Program light_shadow_program(&p3t2n3_vs, &light_shadow_fs);
-    gl::Program shadow_program(&p3_vs, &empty_fs);
+	gl::Program light_shadow_program(&p3t2n3_vs, &light_shadow_fs);
+	gl::Program shadow_program(&p3_vs, &empty_fs);
 
-    rgbf ambient{ 0.2f,0.2f,0.2f };
-    light_shadow_program.SetTex("albedo_texture", 0);
-    light_shadow_program.SetTex("shadowmap", 1);
-    light_shadow_program.SetVecf3("point_light_pos", { 0,5,0 });
-    light_shadow_program.SetVecf3("point_light_radiance", { 100,100,100 });
-    light_shadow_program.SetVecf3("ambient_irradiance", ambient);
-    light_shadow_program.SetFloat("roughness", 0.5f );
-    light_shadow_program.SetFloat("metalness", 0.f);
+	rgbf ambient{ 0.2f,0.2f,0.2f };
+	light_shadow_program.SetTex("albedo_texture", 0);
+	light_shadow_program.SetTex("shadowmap", 1);
+	light_shadow_program.SetVecf3("point_light_pos", light_pos);
+	light_shadow_program.SetVecf3("point_light_radiance", { 100,100,100 });
+	light_shadow_program.SetVecf3("ambient_irradiance", ambient);
+	light_shadow_program.SetFloat("roughness", 0.5f);
+	light_shadow_program.SetFloat("metalness", 0.f);
 
-    // load model
-    // ------------------------------------------------------------------
-    auto spot = SimpleLoader::LoadObj("../data/models/spot_triangulated_good.obj");
-    // world space positions of our cubes
-    pointf3 instancePositions[] = {
-        pointf3(0.0f,  0.0f,  0.0f),
-        pointf3(2.0f,  5.0f, -15.0f),
-        pointf3(-1.5f, -2.2f, -2.5f),
-        pointf3(-3.8f, -2.0f, -12.3f),
-        pointf3(2.4f, -0.4f, -3.5f),
-        pointf3(-1.7f,  3.0f, -7.5f),
-        pointf3(1.3f, -2.0f, -2.5f),
-        pointf3(1.5f,  2.0f, -2.5f),
-        pointf3(1.5f,  0.2f, -1.5f),
-        pointf3(-1.3f,  1.0f, -1.5f)
-    };
+	// load model
+	// ------------------------------------------------------------------
+	auto spot = SimpleLoader::LoadObj("../data/models/spot_triangulated_good.obj");
+	auto plane = SimpleLoader::LoadObj("../data/models/plane.obj");
+	pointf3 position_plane(0.0f, -3.0f, 0.0f);
+	scalef3 scale_plane(25.0f, 1.0f, 25.0f);
+	// world space positions of our cubes
+	pointf3 instancePositions[] = {
+		pointf3(0.0f,  0.0f,  0.0f),
+		pointf3(2.0f,  5.0f, -15.0f),
+		pointf3(-1.5f, -2.2f, -2.5f),
+		pointf3(-3.8f, -2.0f, -12.3f),
+		pointf3(2.4f, -0.4f, -3.5f),
+		pointf3(-1.7f,  3.0f, -7.5f),
+		pointf3(1.3f, -2.0f, -2.5f),
+		pointf3(1.5f,  2.0f, -2.5f),
+		pointf3(1.5f,  0.2f, -1.5f),
+		pointf3(-1.3f,  1.0f, -1.5f)
+	};
 
-    // load and create a texture 
-    // -------------------------
-    gl::Texture2D spot_albedo = loadTexture("../data/textures/spot_albedo.png");
+	// load and create a texture 
+	// -------------------------
+	gl::Texture2D spot_albedo = loadTexture("../data/textures/spot_albedo.png");
+	gl::Texture2D plane_texture = loadTexture("../data/textures/green_checkerboard.png");
 
-    // shadow buffer
-    // -------------------------
-    const size_t SHADOW_TEXTURE_SIZE = 1024;
-    gl::Texture2D shadowmap;
-    shadowmap.SetImage(0, gl::PixelDataInternalFormat::DepthComponent, SHADOW_TEXTURE_SIZE, SHADOW_TEXTURE_SIZE,
-        gl::PixelDataFormat::DepthComponent, gl::PixelDataType::Float, 0);
-    shadowmap.SetWrapFilter(gl::WrapMode::ClampToBorder, gl::WrapMode::ClampToBorder,
-        gl::MinFilter::Nearest, gl::MagFilter::Nearest);
-    rgbaf borderColor{ 1.f,1.f,1.f,1.f };
-    gl::TexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor.data());
-    gl::FrameBuffer shadowFB;
-    shadowFB.Attach(gl::FramebufferAttachment::DepthAttachment, &shadowmap);
+	// shadow buffer
+	// -------------------------
+	const size_t SHADOW_TEXTURE_SIZE = 1024;
+	gl::Texture2D shadowmap;
+	shadowmap.SetImage(0, gl::PixelDataInternalFormat::DepthComponent, SHADOW_TEXTURE_SIZE, SHADOW_TEXTURE_SIZE,
+		gl::PixelDataFormat::DepthComponent, gl::PixelDataType::Float, 0);
+	shadowmap.SetWrapFilter(gl::WrapMode::ClampToBorder, gl::WrapMode::ClampToBorder,
+		gl::MinFilter::Nearest, gl::MagFilter::Nearest);
+	rgbaf borderColor{ 1.f,1.f,1.f,1.f };
+	gl::TexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor.data());
+	gl::FrameBuffer shadowFB;
+	shadowFB.Attach(gl::FramebufferAttachment::DepthAttachment, &shadowmap);
 
-    // render loop
-    // -----------
-    while (!glfwWindowShouldClose(window))
-    {
-        // per-frame time logic
-        // --------------------
-        float currentFrame = static_cast<float>(glfwGetTime());
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+	// render loop
+	// -----------
+	while (!glfwWindowShouldClose(window))
+	{
+		// per-frame time logic
+		// --------------------
+		float currentFrame = static_cast<float>(glfwGetTime());
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
 
-        // input
-        // -----
-        processInput(window);
+		// input
+		// -----
+		processInput(window);
 
-        // render
-        // ------
+		// render
+		// ------
 
-        // [ shadow ]
-        shadowFB.Bind();
-        gl::Viewport({ 0,0 }, SHADOW_TEXTURE_SIZE, SHADOW_TEXTURE_SIZE);
-        gl::Clear(gl::BufferSelectBit::DepthBufferBit);
+		// [ shadow ]
+		shadowFB.Bind();
 
-        // TODO: HW8 - 2_Shadow | generate shadow map
-        // 1. set shadow_program's uniforms: model, view, projection, ...
-        //   - projection: transformf::perspective(...)
-        // 2. draw scene : spot->va->Draw(&shadow_program)
-        //   - 10 spots
-        //   - (optional) plane : receive shadow
-        // -------
-        // ref: https://learnopengl-cn.github.io/05%20Advanced%20Lighting/03%20Shadows/01%20Shadow%20Mapping/
+		gl::Viewport({ 0,0 }, SHADOW_TEXTURE_SIZE, SHADOW_TEXTURE_SIZE);
+		gl::Clear(gl::BufferSelectBit::DepthBufferBit);
 
-        // ... (your codes)
+		// TODO: HW8 - 2_Shadow | generate shadow map
+		// 1. set shadow_program's uniforms: model, view, projection, ...
+		//   - projection: transformf::perspective(...)
+		transformf view_light = transformf::look_at(light_pos, pointf3(1, 0, 0), vecf3(0, 1, 0));
+		transformf proj_shadow = transformf::perspective(to_radian(90.f),
+			(float)scr_width / (float)scr_height, 0.1f, 100.f);
+		shadow_program.SetMatf4("projection", proj_shadow);
+		shadow_program.SetMatf4("view", view_light);
 
-        //=================================
+		// 2. draw scene : spot->va->Draw(&shadow_program)
+		//   - 10 spots
+		for (unsigned int i = 0; i < 10; i++) {
+			// calculate the model matrix for each object and pass it to shader before drawing
+			float angle = 20.0f * i + 10.f * (float)glfwGetTime();
+			transformf model(instancePositions[i], quatf{ vecf3(1.0f, 0.3f, 0.5f), to_radian(angle) });
+			shadow_program.SetMatf4("model", model);
+			spot->va->Draw(&shadow_program);
+		}
+		//   - (optional) plane : receive shadow
+		transformf model_plane_s(position_plane, scale_plane);
+		shadow_program.SetMatf4("model", model_plane_s);
+		plane->va->Draw(&shadow_program);
+		// -------
+		// ref: https://learnopengl-cn.github.io/05%20Advanced%20Lighting/03%20Shadows/01%20Shadow%20Mapping/
 
-        gl::FrameBuffer::BindReset(); // default framebuffer
-        gl::Viewport({ 0,0 }, scr_width, scr_height);
-        gl::ClearColor({ ambient, 1.0f });
-        gl::Clear(gl::BufferSelectBit::ColorBufferBit | gl::BufferSelectBit::DepthBufferBit);
+		// ... (your codes)
 
-        light_shadow_program.SetVecf3("camera_pos", camera.Position);
+		//=================================
 
-        // bind textures on corresponding texture units
-        light_shadow_program.Active(0, &spot_albedo);
-        light_shadow_program.Active(1, &shadowmap);
+		gl::FrameBuffer::BindReset(); // default framebuffer
+		gl::Viewport({ 0,0 }, scr_width, scr_height);
+		gl::ClearColor({ ambient, 1.0f });
+		gl::Clear(gl::BufferSelectBit::ColorBufferBit | gl::BufferSelectBit::DepthBufferBit);
 
-        // pass projection matrix to shader (note that in this case it could change every frame)
-        transformf projection = transformf::perspective(to_radian(camera.Zoom), (float)scr_width / (float)scr_height, 0.1f, 100.f);
-        light_shadow_program.SetMatf4("projection", projection);
+		light_shadow_program.SetVecf3("camera_pos", camera.Position);
 
-        // camera/view transformation
-        light_shadow_program.SetMatf4("view", camera.GetViewMatrix());
+		// bind textures on corresponding texture units
+		light_shadow_program.Active(0, &spot_albedo);
+		light_shadow_program.Active(1, &shadowmap);
 
-        // TODO: HW8 - 2_Shadow | set uniforms about shadow
-        light_shadow_program.SetBool("have_shadow", have_shadow);
-        // near plane, far plane, projection, ...
+		// pass projection matrix to shader (note that in this case it could change every frame)
+		transformf projection = transformf::perspective(to_radian(camera.Zoom), (float)scr_width / (float)scr_height, 0.1f, 100.f);
+		light_shadow_program.SetMatf4("projection", projection);
 
-        for (unsigned int i = 0; i < 10; i++)
-        {
-            // calculate the model matrix for each object and pass it to shader before drawing
-            float angle = 20.0f * i + 10.f * (float)glfwGetTime();
-            transformf model(instancePositions[i], quatf{ vecf3(1.0f, 0.3f, 0.5f), to_radian(angle) });
-            light_shadow_program.SetMatf4("model", model);
-            spot->va->Draw(&light_shadow_program);
-        }
+		// camera/view transformation
+		light_shadow_program.SetMatf4("view", camera.GetViewMatrix());
 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+		// TODO: HW8 - 2_Shadow | set uniforms about shadow
+		light_shadow_program.SetMatf4("light_space_matrix", proj_shadow * view_light);
+		light_shadow_program.SetBool("have_shadow", have_shadow);
+		// near plane, far plane, projection, ...
 
-    // optional: de-allocate all resources once they've outlived their purpose:
-    // ------------------------------------------------------------------------
-    delete spot;
+		for (unsigned int i = 0; i < 10; i++)
+		{
+			// calculate the model matrix for each object and pass it to shader before drawing
+			//float angle = 20.0f * i + 10.f * (float)glfwGetTime();
+			float angle = 20.0f * i + 10.f * (float)glfwGetTime();
+			transformf model(instancePositions[i], quatf{ vecf3(1.0f, 0.3f, 0.5f), to_radian(angle) });
+			light_shadow_program.SetMatf4("model", model);
+			spot->va->Draw(&light_shadow_program);
+		}
+		light_shadow_program.Active(0, &plane_texture);
+		transformf model_plane(position_plane, scale_plane);
+		light_shadow_program.SetMatf4("model", model_plane);
+		plane->va->Draw(&light_shadow_program);
 
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
-    glfwTerminate();
-    return 0;
+		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+		// -------------------------------------------------------------------------------
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+
+	// optional: de-allocate all resources once they've outlived their purpose:
+	// ------------------------------------------------------------------------
+	delete spot;
+
+	// glfw: terminate, clearing all previously allocated GLFW resources.
+	// ------------------------------------------------------------------
+	glfwTerminate();
+	return 0;
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window)
+void processInput(GLFWwindow* window)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(Camera::Movement::FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(Camera::Movement::BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(Camera::Movement::LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(Camera::Movement::RIGHT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-        camera.ProcessKeyboard(Camera::Movement::UP, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        camera.ProcessKeyboard(Camera::Movement::DOWN, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		camera.ProcessKeyboard(Camera::Movement::FORWARD, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		camera.ProcessKeyboard(Camera::Movement::BACKWARD, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		camera.ProcessKeyboard(Camera::Movement::LEFT, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		camera.ProcessKeyboard(Camera::Movement::RIGHT, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+		camera.ProcessKeyboard(Camera::Movement::UP, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+		camera.ProcessKeyboard(Camera::Movement::DOWN, deltaTime);
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        have_shadow = !have_shadow;
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		have_shadow = !have_shadow;
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
 // ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    // make sure the viewport matches the new window dimensions; note that width and 
-    // height will be significantly larger than specified on retina displays.
-    gl::Viewport({ 0, 0 }, width, height);
-    scr_width = width;
-    scr_height = height;
+	// make sure the viewport matches the new window dimensions; note that width and 
+	// height will be significantly larger than specified on retina displays.
+	gl::Viewport({ 0, 0 }, width, height);
+	scr_width = width;
+	scr_height = height;
 }
 
 
@@ -252,59 +280,59 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 // -------------------------------------------------------
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-    if (firstMouse)
-    {
-        lastX = static_cast<float>(xpos);
-        lastY = static_cast<float>(ypos);
-        firstMouse = false;
-    }
+	if (firstMouse)
+	{
+		lastX = static_cast<float>(xpos);
+		lastY = static_cast<float>(ypos);
+		firstMouse = false;
+	}
 
-    float xoffset = static_cast<float>(xpos) - lastX;
-    float yoffset = lastY - static_cast<float>(ypos); // reversed since y-coordinates go from bottom to top
+	float xoffset = static_cast<float>(xpos) - lastX;
+	float yoffset = lastY - static_cast<float>(ypos); // reversed since y-coordinates go from bottom to top
 
-    lastX = static_cast<float>(xpos);
-    lastY = static_cast<float>(ypos);
+	lastX = static_cast<float>(xpos);
+	lastY = static_cast<float>(ypos);
 
-    camera.ProcessMouseMovement(static_cast<float>(xoffset), static_cast<float>(yoffset));
+	camera.ProcessMouseMovement(static_cast<float>(xoffset), static_cast<float>(yoffset));
 }
 
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
 // ----------------------------------------------------------------------
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    camera.ProcessMouseScroll(static_cast<float>(yoffset));
+	camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
 gl::Texture2D loadTexture(char const* path)
 {
-    gl::Texture2D tex;
-    tex.SetWrapFilter(gl::WrapMode::Repeat, gl::WrapMode::Repeat, gl::MinFilter::Linear, gl::MagFilter::Linear);
-    // load image, create texture and generate mipmaps
-    int width, height, nrChannels;
-    stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
-    unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
-    gl::PixelDataFormat c2f[4] = {
-        gl::PixelDataFormat::Red,
-        gl::PixelDataFormat::Rg,
-        gl::PixelDataFormat::Rgb,
-        gl::PixelDataFormat::Rgba
-    };
-    gl::PixelDataInternalFormat c2if[4] = {
-        gl::PixelDataInternalFormat::Red,
-        gl::PixelDataInternalFormat::Rg,
-        gl::PixelDataInternalFormat::Rgb,
-        gl::PixelDataInternalFormat::Rgba
-    };
-    if (data)
-    {
-        tex.SetImage(0, c2if[nrChannels - 1], width, height, c2f[nrChannels - 1], gl::PixelDataType::UnsignedByte, data);
-        tex.GenerateMipmap();
-    }
-    else
-    {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
+	gl::Texture2D tex;
+	tex.SetWrapFilter(gl::WrapMode::Repeat, gl::WrapMode::Repeat, gl::MinFilter::Linear, gl::MagFilter::Linear);
+	// load image, create texture and generate mipmaps
+	int width, height, nrChannels;
+	stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
+	unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
+	gl::PixelDataFormat c2f[4] = {
+		gl::PixelDataFormat::Red,
+		gl::PixelDataFormat::Rg,
+		gl::PixelDataFormat::Rgb,
+		gl::PixelDataFormat::Rgba
+	};
+	gl::PixelDataInternalFormat c2if[4] = {
+		gl::PixelDataInternalFormat::Red,
+		gl::PixelDataInternalFormat::Rg,
+		gl::PixelDataInternalFormat::Rgb,
+		gl::PixelDataInternalFormat::Rgba
+	};
+	if (data)
+	{
+		tex.SetImage(0, c2if[nrChannels - 1], width, height, c2f[nrChannels - 1], gl::PixelDataType::UnsignedByte, data);
+		tex.GenerateMipmap();
+	}
+	else
+	{
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	stbi_image_free(data);
 
-    return tex;
+	return tex;
 }

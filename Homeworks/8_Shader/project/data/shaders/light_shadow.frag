@@ -3,6 +3,7 @@
 #define PI 3.1415926
 #define EPSILON 0.000001
 
+
 out vec4 FragColor;
 
 uniform vec3 point_light_pos;
@@ -11,6 +12,7 @@ uniform sampler2D shadowmap;
 uniform bool have_shadow;
 // TODO: HW8 - 2_Shadow | uniforms
 // add uniforms for mapping position in world space to position in shadowmap space
+uniform mat4 light_space_matrix;
 
 uniform vec3 ambient_irradiance;
 uniform sampler2D albedo_texture;
@@ -54,6 +56,21 @@ float GGX_D(float alpha, vec3 N, vec3 H) {
 	return step(cos_stheta, 0) * alpha2 / denominator;
 }
 
+float ShadowCalculation(vec4 frag_pos_light_space){
+    // 执行透视除法
+    vec3 proj_coords = frag_pos_light_space.xyz / frag_pos_light_space.w;
+    // 变换到[0,1]的范围
+    proj_coords = proj_coords * 0.5 + 0.5;
+    // 取得最近点的深度(使用[0,1]范围下的fragPosLight当坐标)
+    float closest_depth = texture(shadowmap, proj_coords.xy).r; 
+    // 取得当前片段在光源视角下的深度
+    float current_depth = proj_coords.z;
+    // 检查当前片段是否在阴影中
+    float visible = current_depth - closest_depth > 1e-3 ? 0.0 : 1.0;
+
+    return visible;
+}
+
 void main() {
 	vec3 albedo = texture(albedo_texture, vs_out.TexCoord).rgb;
 	float alpha = roughness * roughness;
@@ -78,7 +95,12 @@ void main() {
 	
 	vec3 brdf = diffuse + specular;
 	// TODO: HW8 - 2_Shadow | shadow
-	float visible = 1.0; // if the fragment is in shadow, set it to 0
+	vec4 frag_pos_light_space = light_space_matrix * vec4(vs_out.WorldPos,1.0);
+	float visible;
+	if(have_shadow)
+		visible = ShadowCalculation(frag_pos_light_space); // if the fragment is in shadow, set it to 0
+	else
+		visible = 1.0;
 	vec3 Lo_direct = visible * brdf * point_light_radiance * max(cos_theta, 0) / dist2;
 	vec3 Lo_ambient = (1-metalness) * albedo / PI * ambient_irradiance;
 	vec3 Lo = Lo_direct + Lo_ambient;
