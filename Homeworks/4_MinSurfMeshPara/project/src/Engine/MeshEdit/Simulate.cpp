@@ -18,11 +18,9 @@ bool Simulate::Init() {
 	//Clear();
 
 
-	this->velocity .resize(positions.size());
-	for (int i = 0; i < positions.size(); i++)
-	{
-		for (int j = 0; j < 3; j++)
-		{
+	this->velocity.resize(positions.size());
+	for (int i = 0; i < positions.size(); i++) {
+		for (int j = 0; j < 3; j++) {
 			this->velocity[i][j] = 0;
 		}
 	}
@@ -41,23 +39,18 @@ bool Simulate::Run() {
 	return true;
 }
 
-void Ubpa::Simulate::SetLeftFix()
-{
-	//固定网格x坐标最小点
+void Ubpa::Simulate::SetLeftFix() {
+	//鍥哄畾缃戞牸x鍧愭爣鏈�灏忕偣
 	fixed_id.clear();
 	double x = 100000;
-	for (int i = 0; i < positions.size(); i++)
-	{
-		if (positions[i][0] < x)
-		{
+	for (int i = 0; i < positions.size(); i++) {
+		if (positions[i][0] < x) {
 			x = positions[i][0];
 		}
 	}
 
-	for (int i = 0; i < positions.size(); i++)
-	{
-		if (abs(positions[i][0] - x) < 1e-5)
-		{
+	for (int i = 0; i < positions.size(); i++) {
+		if (abs(positions[i][0] - x) < 1e-5) {
 			fixed_id.push_back(i);
 		}
 	}
@@ -70,11 +63,10 @@ void Simulate::SimulateOnce() {
 	//cout << "WARNING::Simulate::SimulateOnce:" << endl;
 //		<< "\t" << "not implemented" << endl;
 
-	
-	for (int i = 0; i < positions.size(); i++)
-	{
 
-		this->velocity[i][0] += -h*1.f;
+	for (int i = 0; i < positions.size(); i++) {
+
+		this->velocity[i][0] += -h * 1.f;
 		this->positions[i][0] += h * this->velocity[i][0];
 	}
 
