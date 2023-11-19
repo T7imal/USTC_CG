@@ -159,6 +159,7 @@ cv::Mat PoissonSolver::solve() {
                     result.at<cv::Vec3b>(i - rect_start_.y() + pos.y(), j - rect_start_.x() + pos.x())[2] = x_red[m];
                     result.at<cv::Vec3b>(i - rect_start_.y() + pos.y(), j - rect_start_.x() + pos.x())[1] = x_green[m];
                     result.at<cv::Vec3b>(i - rect_start_.y() + pos.y(), j - rect_start_.x() + pos.x())[0] = x_blue[m];
+
                 }
             }
         }
