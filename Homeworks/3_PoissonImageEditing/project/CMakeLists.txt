@@ -12,4 +12,7 @@ Ubpa_QtInit(COMPONENTS Core Gui Widgets)
 
 find_package(OpenCV REQUIRED)
 
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
 Ubpa_AddSubDirsRec(src)

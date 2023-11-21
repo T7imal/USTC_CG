@@ -67,20 +67,23 @@ void MainWindow::CreateActions() {
 	connect(action_restore_, SIGNAL(triggered()), this, SLOT(Restore()));
 
 	// Poisson image editting
+	action_choose_rect_ = new QAction(tr("RectChoose"), this);
+	connect(action_choose_rect_, SIGNAL(triggered()), this, SLOT(ChooseRect()));
+
 	action_choose_polygon_ = new QAction(tr("PolygonChoose"), this);
 	connect(action_choose_polygon_, SIGNAL(triggered()), this, SLOT(ChoosePolygon()));
 
-	action_choose_rect_ = new QAction(tr("RectChoose"), this);
-	connect(action_choose_rect_, SIGNAL(triggered()), this, SLOT(ChooseRect()));
+	action_choose_freedraw_ = new QAction(tr("FreedrawChoose"), this);
+	connect(action_choose_freedraw_, SIGNAL(triggered()), this, SLOT(ChooseFreedraw()));
 
 	action_paste_ = new QAction(tr("Paste"), this);
 	connect(action_paste_, SIGNAL(triggered()), this, SLOT(Paste()));
 
-	action_paste_possion_ = new QAction(tr("Paste(Possion)"), this);
-	connect(action_paste_possion_, SIGNAL(triggered()), this, SLOT(PastePossion()));
+	action_mix_paste_ = new QAction(tr("MixPoisson"), this);
+	connect(action_mix_paste_, SIGNAL(triggered()), this, SLOT(MixPaste()));
 
-	action_paste_mixed_ = new QAction(tr("Paste(Mixed)"), this);
-	connect(action_paste_mixed_, SIGNAL(triggered()), this, SLOT(PasteMixed()));
+	action_poisson_paste_ = new QAction(tr("Poisson"), this);
+	connect(action_poisson_paste_, SIGNAL(triggered()), this, SLOT(PoissonPaste()));
 }
 
 void MainWindow::CreateMenus() {
@@ -118,12 +121,10 @@ void MainWindow::CreateToolBars() {
 	toolbar_file_->addSeparator();
 	toolbar_file_->addAction(action_choose_rect_);
 	toolbar_file_->addAction(action_choose_polygon_);
-
-	// select
-	toolbar_file_->addSeparator();
+	toolbar_file_->addAction(action_choose_freedraw_);
 	toolbar_file_->addAction(action_paste_);
-	toolbar_file_->addAction(action_paste_possion_);
-	toolbar_file_->addAction(action_paste_mixed_);
+	toolbar_file_->addAction(action_mix_paste_);
+	toolbar_file_->addAction(action_poisson_paste_);
 }
 
 void MainWindow::CreateStatusBar() {
@@ -225,7 +226,8 @@ void MainWindow::ChooseRect() {
 	ChildWindow* window = GetChildWindow();
 	if (!window)
 		return;
-	window->imagewidget_->set_draw_status_to_choose_rect();
+	window->imagewidget_->set_draw_status_to_choose();
+	window->imagewidget_->shape_ = new poissonedit::Rect;
 	child_source_ = window;
 }
 
@@ -234,7 +236,18 @@ void MainWindow::ChoosePolygon() {
 	ChildWindow* window = GetChildWindow();
 	if (!window)
 		return;
-	window->imagewidget_->set_draw_status_to_choose_polygon();
+	window->imagewidget_->set_draw_status_to_choose();
+	window->imagewidget_->shape_ = new poissonedit::Polygon;
+	child_source_ = window;
+}
+
+void MainWindow::ChooseFreedraw() {
+	// Set source child window
+	ChildWindow* window = GetChildWindow();
+	if (!window)
+		return;
+	window->imagewidget_->set_draw_status_to_choose();
+	window->imagewidget_->shape_ = new poissonedit::Freedraw;
 	child_source_ = window;
 }
 
@@ -245,24 +258,27 @@ void MainWindow::Paste() {
 		return;
 	window->imagewidget_->set_draw_status_to_paste();
 	window->imagewidget_->set_source_window(child_source_);
+	window->imagewidget_->set_normal_paste();
 }
 
-void MainWindow::PastePossion() {
+void MainWindow::PoissonPaste() {
 	// Paste image rect region to object image
 	ChildWindow* window = GetChildWindow();
 	if (!window)
 		return;
-	window->imagewidget_->set_draw_status_to_paste_possion();
+	window->imagewidget_->set_draw_status_to_paste();
 	window->imagewidget_->set_source_window(child_source_);
+	window->imagewidget_->set_poisson_paste();
 }
 
-void MainWindow::PasteMixed() {
+void MainWindow::MixPaste() {
 	// Paste image rect region to object image
 	ChildWindow* window = GetChildWindow();
 	if (!window)
 		return;
-	window->imagewidget_->set_draw_status_to_paste_mixed();
+	window->imagewidget_->set_draw_status_to_paste();
 	window->imagewidget_->set_source_window(child_source_);
+	window->imagewidget_->set_mix_paste();
 }
 
 QMdiSubWindow* MainWindow::FindChild(const QString& filename) {
