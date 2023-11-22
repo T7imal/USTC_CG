@@ -6,8 +6,7 @@
 #include <Eigen/Sparse>
 #include<Eigen/IterativeLinearSolvers>
 
-class Poisson
-{
+class Poisson {
 public:
 	Poisson();
 	~Poisson();
@@ -15,10 +14,9 @@ public:
 	void set_insidemask(Eigen::MatrixXi inside_mask);
 	void GetPoisson(QPoint paste_point, QPoint source_point, cv::Mat& paste_img_, cv::Mat& source_img_);
 	void MixingPoisson(QPoint paste_point, QPoint source_point, cv::Mat& paste_img_, cv::Mat& source_img_);
-	void CopyPaste(QPoint paste_point, QPoint source_point, cv::Mat& paste_img_, cv::Mat& source_img_);
+	void Paste(QPoint paste_point, QPoint source_point, cv::Mat& paste_img_, cv::Mat& source_img_);
 
 private:
-	void Predecomposition();
 	double VecLength(cv::Vec3i vec);
 
 private:

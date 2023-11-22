@@ -35,39 +35,31 @@ void Poisson::PoissonInit(cv::Mat source_img) {
 	sparse_matrix_.resize(pixels_num_, pixels_num_);
 	sparse_matrix_.setZero();
 
-	QVector<Eigen::Triplet<float>> coef;
+	QVector<Eigen::Triplet<float>> tripletList;
 	for (int i = 0; i < width_; i++) {
 		for (int j = 0; j < height_; j++) {
 			if (inside_mask_(i, j) == 1) {
 				int index = index_matrix_(i, j);
-				coef.push_back(Eigen::Triplet<float>(index, index, 4));
+				tripletList.push_back(Eigen::Triplet<float>(index, index, 4));
 				if (i > 0 && inside_mask_(i - 1, j) == 1) {
-					coef.push_back(Eigen::Triplet<float>(index, index_matrix_(i - 1, j), -1));
+					tripletList.push_back(Eigen::Triplet<float>(index, index_matrix_(i - 1, j), -1));
 				}
 				if (j > 0 && inside_mask_(i, j - 1) == 1) {
-					coef.push_back(Eigen::Triplet<float>(index, index_matrix_(i, j - 1), -1));
+					tripletList.push_back(Eigen::Triplet<float>(index, index_matrix_(i, j - 1), -1));
 				}
 				if (i < width_ - 1 && inside_mask_(i + 1, j) == 1) {
-					coef.push_back(Eigen::Triplet<float>(index, index_matrix_(i + 1, j), -1));
+					tripletList.push_back(Eigen::Triplet<float>(index, index_matrix_(i + 1, j), -1));
 				}
 				if (j < height_ - 1 && inside_mask_(i, j + 1) == 1) {
-					coef.push_back(Eigen::Triplet<float>(index, index_matrix_(i, j + 1), -1));
+					tripletList.push_back(Eigen::Triplet<float>(index, index_matrix_(i, j + 1), -1));
 				}
 			}
 		}
 	}
-	sparse_matrix_.setFromTriplets(coef.begin(), coef.end());
+	sparse_matrix_.setFromTriplets(tripletList.begin(), tripletList.end());
 	sparse_matrix_.makeCompressed();
 
-	Predecomposition();
-}
-
-void Poisson::Predecomposition() {
 	solver.compute(sparse_matrix_);
-	if (solver.info() != Eigen::Success) {
-		throw std::logic_error("Compute Matrix is error");
-		return;
-	}
 }
 
 void Poisson::GetPoisson(QPoint paste_point, QPoint source_point, cv::Mat& paste_img_, cv::Mat& source_img_) {
@@ -87,16 +79,22 @@ void Poisson::GetPoisson(QPoint paste_point, QPoint source_point, cv::Mat& paste
 				int index = index_matrix_(i, j);
 				int x = source_point_.y() + i;
 				int y = source_point_.x() + j;
-				cv::Vec3i temp_vec = source_img_.at<cv::Vec3b>(x, y);
-				temp_vec *= 4;
-				temp_vec -= source_img_.at<cv::Vec3b>(x + 1, y);
-				temp_vec -= source_img_.at<cv::Vec3b>(x - 1, y);
-				temp_vec -= source_img_.at<cv::Vec3b>(x, y - 1);
-				temp_vec -= source_img_.at<cv::Vec3b>(x, y + 1);
 
-				div_red_(index_matrix_(i, j)) += temp_vec[0];
-				div_green_(index_matrix_(i, j)) += temp_vec[1];
-				div_blue_(index_matrix_(i, j)) += temp_vec[2];
+				div_red_[index] = 4 * source_img_.at<cv::Vec3b>(x, y)[0]
+					- source_img_.at<cv::Vec3b>(x + 1, y)[0]
+					- source_img_.at<cv::Vec3b>(x - 1, y)[0]
+					- source_img_.at<cv::Vec3b>(x, y + 1)[0]
+					- source_img_.at<cv::Vec3b>(x, y - 1)[0]; //不考虑图片边界
+				div_green_[index] = 4 * source_img_.at<cv::Vec3b>(x, y)[1]
+					- source_img_.at<cv::Vec3b>(x + 1, y)[1]
+					- source_img_.at<cv::Vec3b>(x - 1, y)[1]
+					- source_img_.at<cv::Vec3b>(x, y + 1)[1]
+					- source_img_.at<cv::Vec3b>(x, y - 1)[1]; //不考虑图片边界
+				div_blue_[index] = 4 * source_img_.at<cv::Vec3b>(x, y)[2]
+					- source_img_.at<cv::Vec3b>(x + 1, y)[2]
+					- source_img_.at<cv::Vec3b>(x - 1, y)[2]
+					- source_img_.at<cv::Vec3b>(x, y + 1)[2]
+					- source_img_.at<cv::Vec3b>(x, y - 1)[2]; //不考虑图片边界
 
 				if (i == 0 || (i > 0 && inside_mask_(i - 1, j) == 0)) {
 					div_red_[index] += paste_img_.at<cv::Vec3b>(i + paste_point_.y() - 1, j + paste_point_.x())[0];
@@ -130,16 +128,17 @@ void Poisson::GetPoisson(QPoint paste_point, QPoint source_point, cv::Mat& paste
 	vec_green = solver.solve(div_green_);
 	vec_blue = solver.solve(div_blue_);
 
-	for (int j = 0; j < width_; j++) {
-		for (int k = 0; k < height_; k++) {
-			if (inside_mask_(j, k) == 1) {
-				int index = index_matrix_(j, k);
+	for (int i = 0; i < width_; i++) {
+		for (int j = 0; j < height_; j++) {
+			if (inside_mask_(i, j) == 1) {
+				int index = index_matrix_(i, j);
 				int red = vec_red(index);
 				int green = vec_green(index);
 				int blue = vec_blue(index);
-				paste_img_.at<cv::Vec3b>(j + paste_point_.y(), k + paste_point_.x())[0] = red > 255 ? 255 : (red < 0 ? 0 : red);
-				paste_img_.at<cv::Vec3b>(j + paste_point_.y(), k + paste_point_.x())[1] = green > 255 ? 255 : (green < 0 ? 0 : green);
-				paste_img_.at<cv::Vec3b>(j + paste_point_.y(), k + paste_point_.x())[2] = blue > 255 ? 255 : (blue < 0 ? 0 : blue);
+				int x = i + paste_point_.y(), y = j + paste_point_.x();
+				paste_img_.at<cv::Vec3b>(x, y)[0] = red > 255 ? 255 : (red < 0 ? 0 : red);
+				paste_img_.at<cv::Vec3b>(x, y)[1] = green > 255 ? 255 : (green < 0 ? 0 : green);
+				paste_img_.at<cv::Vec3b>(x, y)[2] = blue > 255 ? 255 : (blue < 0 ? 0 : blue);
 			}
 		}
 	}
@@ -231,22 +230,23 @@ void Poisson::MixingPoisson(QPoint paste_point, QPoint source_point, cv::Mat& pa
 	vec_green = solver.solve(div_green_);
 	vec_blue = solver.solve(div_blue_);
 
-	for (int j = 0; j < width_; j++) {
-		for (int k = 0; k < height_; k++) {
-			if (inside_mask_(j, k) == 1) {
-				int index = index_matrix_(j, k);
+	for (int i = 0; i < width_; i++) {
+		for (int j = 0; j < height_; j++) {
+			if (inside_mask_(i, j) == 1) {
+				int index = index_matrix_(i, j);
 				int red = vec_red(index);
 				int green = vec_green(index);
 				int blue = vec_blue(index);
-				paste_img_.at<cv::Vec3b>(j + paste_point_.y(), k + paste_point_.x())[0] = red > 255 ? 255 : (red < 0 ? 0 : red);
-				paste_img_.at<cv::Vec3b>(j + paste_point_.y(), k + paste_point_.x())[1] = green > 255 ? 255 : (green < 0 ? 0 : green);
-				paste_img_.at<cv::Vec3b>(j + paste_point_.y(), k + paste_point_.x())[2] = blue > 255 ? 255 : (blue < 0 ? 0 : blue);
+				int x = i + paste_point_.y(), y = j + paste_point_.x();
+				paste_img_.at<cv::Vec3b>(x, y)[0] = red > 255 ? 255 : (red < 0 ? 0 : red);
+				paste_img_.at<cv::Vec3b>(x, y)[1] = green > 255 ? 255 : (green < 0 ? 0 : green);
+				paste_img_.at<cv::Vec3b>(x, y)[2] = blue > 255 ? 255 : (blue < 0 ? 0 : blue);
 			}
 		}
 	}
 }
 
-void Poisson::CopyPaste(QPoint paste_point, QPoint source_point, cv::Mat& paste_img_, cv::Mat& source_img_) {
+void Poisson::Paste(QPoint paste_point, QPoint source_point, cv::Mat& paste_img_, cv::Mat& source_img_) {
 	paste_point_ = paste_point;
 	source_point_ = source_point;
 	for (int j = 0; j < width_; j++) {

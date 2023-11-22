@@ -110,10 +110,9 @@ void ImageWidget::mousePressEvent(QMouseEvent* mouseevent) {
 			point_start_ = point_end_ = mouseevent->pos();
 			shape_->set_start(point_start_);
 			shape_->set_end(point_end_);
-			// if (shape_->type_ == Shape::kPolygon)
-			// {
-			// 	shape_->update(1);
-			// }
+			if (shape_->type_ == Shape::kPolygon) {
+				shape_->update(1);
+			}
 			break;
 
 		case kPaste:
@@ -147,7 +146,7 @@ void ImageWidget::mousePressEvent(QMouseEvent* mouseevent) {
 						image_mat_, source_window_->imagewidget_->image_mat_);
 					break;
 				case NORMAL:
-					source_window_->imagewidget_->poisson_->CopyPaste(mouseevent->pos(), source_window_->imagewidget_->scanline_->get_start(),
+					source_window_->imagewidget_->poisson_->Paste(mouseevent->pos(), source_window_->imagewidget_->scanline_->get_start(),
 						image_mat_, source_window_->imagewidget_->image_mat_);
 					break;
 				default:
@@ -163,15 +162,9 @@ void ImageWidget::mousePressEvent(QMouseEvent* mouseevent) {
 	}
 	if (Qt::RightButton == mouseevent->button()) {
 		if (draw_status_ == kChoose && shape_->type_ == Shape::kPolygon) {
-			is_choosing_ = false;
-			draw_status_ = kNone;
-			scanline_ = new ScanLine;
-			poisson_ = new Poisson;
-			shape_->update(0);
-			scanline_->InitPoints(shape_->get_polygon());
-			scanline_->GetInsideMask();
-			poisson_->set_insidemask(scanline_->inside_mask_);
-			poisson_->PoissonInit(image_mat_);
+			point_end_ = mouseevent->pos();
+			shape_->set_end(point_end_);
+			shape_->update(3);
 
 			update();
 		}
@@ -186,6 +179,9 @@ void ImageWidget::mouseMoveEvent(QMouseEvent* mouseevent) {
 		if (is_choosing_) {
 			point_end_ = mouseevent->pos();
 			shape_->set_end(point_end_);
+			if (shape_->type_ == Shape::kPolygon) {
+				shape_->update(2);
+			}
 		}
 		break;
 
@@ -221,7 +217,7 @@ void ImageWidget::mouseMoveEvent(QMouseEvent* mouseevent) {
 						image_mat_, source_window_->imagewidget_->image_mat_);
 					break;
 				case NORMAL:
-					source_window_->imagewidget_->poisson_->CopyPaste(mouseevent->pos(), source_window_->imagewidget_->scanline_->get_start(),
+					source_window_->imagewidget_->poisson_->Paste(mouseevent->pos(), source_window_->imagewidget_->scanline_->get_start(),
 						image_mat_, source_window_->imagewidget_->image_mat_);
 					break;
 				default:
@@ -257,6 +253,17 @@ void ImageWidget::mouseReleaseEvent(QMouseEvent* mouseevent) {
 				is_choosing_ = false;
 				draw_status_ = kNone;
 				scanline_->InitPoints(shape_->get_path());
+				scanline_->GetInsideMask();
+				poisson_->set_insidemask(scanline_->inside_mask_);
+				poisson_->PoissonInit(image_mat_);
+			}
+			if (shape_->type_ == Shape::kPolygon) {
+				shape_->update(0);
+				scanline_ = new ScanLine;
+				poisson_ = new Poisson;
+				is_choosing_ = false;
+				draw_status_ = kNone;
+				scanline_->InitPoints(shape_->get_polygon());
 				scanline_->GetInsideMask();
 				poisson_->set_insidemask(scanline_->inside_mask_);
 				poisson_->PoissonInit(image_mat_);
