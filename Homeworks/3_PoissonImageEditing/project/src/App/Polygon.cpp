@@ -18,6 +18,7 @@ QPolygon Polygon::get_polygon() {
 void Polygon::update(int mode) {
 	switch (mode) {
 	case 0:
+		polygon.pop_back();
 		finish = true;
 		break;
 	case 1:

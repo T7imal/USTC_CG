@@ -62,7 +62,8 @@ struct Particle {
 		C(0),
 		Jp(1),
 		c(c),
-		type_p(type_p) {}
+		type_p(type_p) {
+	}
 	//---------- End ----------
 };
 
@@ -206,8 +207,7 @@ void advance(real dt) {
 		auto F = (Mat(1) + dt * p.C) * p.F;
 
 		// ---------- Add new particle types ----------
-		if (p.type_p == 0)
-		{
+		if (p.type_p == 0) {
 			Mat svd_u, sig, svd_v;
 			svd(F, svd_u, sig, svd_v);
 
@@ -224,13 +224,11 @@ void advance(real dt) {
 			p.Jp = Jp_new;
 			p.F = F;
 		}
-		else if (p.type_p == 1)
-		{
+		else if (p.type_p == 1) {
 			// Liquid
 			p.F = Mat(1) * sqrt(determinant(F));
 		}
-		else if (p.type_p == 2)
-		{
+		else if (p.type_p == 2) {
 			// Jelly
 			p.F = F;
 		}
@@ -247,13 +245,11 @@ void add_object(Vec center, int c, int num, int type_p = 0) {
 }
 
 //---------- Add Tetris ----------
-void add_object_tetris(Vec center, int c, int num, int type_tetris = 0, int type_p = 0)
-{
+void add_object_tetris(Vec center, int c, int num, int type_tetris = 0, int type_p = 0) {
 	add_object(center, c, num, type_p);
 	add_object(center + Vec(0, -0.06), c, num, type_p);
 
-	switch (type_tetris)
-	{
+	switch (type_tetris) {
 	case 0:
 		add_object(center + Vec(0.06, -0.06), c, num, type_p);
 		add_object(center + Vec(-0.06, -0.06), c, num, type_p);
@@ -287,16 +283,14 @@ void add_object_tetris(Vec center, int c, int num, int type_tetris = 0, int type
 	}
 }
 
-void add_tetris(int num, int type_p = -1, int type_tetris = -1, Vec center = Vec(-1))
-{
+void add_tetris(int num, int type_p = -1, int type_tetris = -1, Vec center = Vec(-1)) {
 	if (type_p == -1)
 		type_p = (int)(std::rand() % 3);
 	if (type_tetris == -1)
 		type_tetris = (int)(std::rand() % 7);
 	if (center.x == -1)
 		center = Vec(std::rand() % 10 * 0.06 + 0.23, 0.90);
-	switch (type_tetris)
-	{
+	switch (type_tetris) {
 	case 0:
 		add_object_tetris(center, 0x6C3365, num, type_tetris, type_p);
 		break;
@@ -325,20 +319,15 @@ void add_tetris(int num, int type_p = -1, int type_tetris = -1, Vec center = Vec
 //---------- End ----------
 
 // ---------- Add Clear ----------
-void tetris_clear(int num)
-{
+void tetris_clear(int num) {
 	int count = 0;
-	for (auto& p : particles)
-	{
+	for (auto& p : particles) {
 		if (p.x.y < 0.11)
 			count++;
 	}
-	if (count > 0.8 * num / (0.06 * 0.06) * 0.9 * 0.06)
-	{
-		for (auto iter = particles.begin(); iter < particles.end();)
-		{
-			if (iter->x.y < 0.11)
-			{
+	if (count > 0.8 * num / (0.06 * 0.06) * 0.9 * 0.06) {
+		for (auto iter = particles.begin(); iter < particles.end();) {
+			if (iter->x.y < 0.11) {
 				particles.erase(iter);
 			}
 			else
@@ -349,8 +338,7 @@ void tetris_clear(int num)
 // ---------- End ----------
 
 // ---------- Add Planet ----------
-void add_planet(Vec center, int c, int type_p, real omega = 0.3, int num = 2000, real r = 0.1, Vec v = Vec(0))
-{
+void add_planet(Vec center, int c, int type_p, real omega = 0.3, int num = 2000, real r = 0.1, Vec v = Vec(0)) {
 	//for (int i = 0; i < 2000; i++) {
 	//    auto pos = Vec::rand() * 2.0f - Vec(1);
 	//    particles.push_back(Particle(pos * 0.1f + center, c, type_p, omega * Vec(pos.y, -pos.x)));
@@ -366,10 +354,8 @@ void add_planet(Vec center, int c, int type_p, real omega = 0.3, int num = 2000,
 }
 // ---------- End ----------
 
-void sample(int count)
-{
-	switch (count)
-	{
+void sample(int count) {
+	switch (count) {
 	case 0:
 		add_object_tetris(Vec(0.29, 0.80), 0xFF0000, 200, 1, 0);
 		break;
@@ -388,7 +374,7 @@ int main() {
 	auto& canvas = gui.get_canvas();
 
 	srand((int)time(0));
-	int num = 100;
+	int num = 50;
 	int frame = 0;
 	int count = 0;
 
@@ -417,7 +403,7 @@ int main() {
 			gui.update();
 
 			// ---------- For Tetris ----------
-			if (step % int(150 * frame_dt / dt) == 0 && count < 10) {
+			if (step % int(50 * frame_dt / dt) == 0 && count < 10) {
 				tetris_clear(num);
 				//sample(count);
 				add_tetris(num);

@@ -153,9 +153,9 @@ void ImageWidget::mousePressEvent(QMouseEvent* mouseevent) {
 					break;
 				}
 			}
+			break;
 		}
-		update();
-		break;
+
 		default:
 			break;
 		}
@@ -165,11 +165,9 @@ void ImageWidget::mousePressEvent(QMouseEvent* mouseevent) {
 			point_end_ = mouseevent->pos();
 			shape_->set_end(point_end_);
 			shape_->update(3);
-
-			update();
 		}
-
 	}
+	update();
 }
 
 void ImageWidget::mouseMoveEvent(QMouseEvent* mouseevent) {
@@ -232,55 +230,56 @@ void ImageWidget::mouseMoveEvent(QMouseEvent* mouseevent) {
 }
 
 void ImageWidget::mouseReleaseEvent(QMouseEvent* mouseevent) {
-	switch (draw_status_) {
-	case kChoose:
-		if (is_choosing_) {
-			point_end_ = mouseevent->pos();
-			if (shape_->type_ == Shape::kRect) {
-				scanline_ = new ScanLine;
-				poisson_ = new Poisson;
-				is_choosing_ = false;
-				draw_status_ = kNone;
-				scanline_->InitPoints(point_start_, point_end_);
-				scanline_->GetInsideMask();
-				poisson_->set_insidemask(scanline_->inside_mask_);
-				poisson_->PoissonInit(image_mat_);
+	if (Qt::LeftButton == mouseevent->button()) {
+		switch (draw_status_) {
+		case kChoose:
+			if (is_choosing_) {
+				point_end_ = mouseevent->pos();
+				if (shape_->type_ == Shape::kRect) {
+					scanline_ = new ScanLine;
+					poisson_ = new Poisson;
+					is_choosing_ = false;
+					draw_status_ = kNone;
+					scanline_->InitPoints(point_start_, point_end_);
+					scanline_->GetInsideMask();
+					poisson_->set_insidemask(scanline_->inside_mask_);
+					poisson_->PoissonInit(image_mat_);
+				}
+				if (shape_->type_ == Shape::kFreedraw) {
+					shape_->set_end(point_start_);
+					scanline_ = new ScanLine;
+					poisson_ = new Poisson;
+					is_choosing_ = false;
+					draw_status_ = kNone;
+					scanline_->InitPoints(shape_->get_path());
+					scanline_->GetInsideMask();
+					poisson_->set_insidemask(scanline_->inside_mask_);
+					poisson_->PoissonInit(image_mat_);
+				}
+				if (shape_->type_ == Shape::kPolygon) {
+					shape_->update(0);
+					scanline_ = new ScanLine;
+					poisson_ = new Poisson;
+					is_choosing_ = false;
+					draw_status_ = kNone;
+					scanline_->InitPoints(shape_->get_polygon());
+					scanline_->GetInsideMask();
+					poisson_->set_insidemask(scanline_->inside_mask_);
+					poisson_->PoissonInit(image_mat_);
+				}
 			}
-			if (shape_->type_ == Shape::kFreedraw) {
-				shape_->set_end(point_start_);
-				scanline_ = new ScanLine;
-				poisson_ = new Poisson;
-				is_choosing_ = false;
-				draw_status_ = kNone;
-				scanline_->InitPoints(shape_->get_path());
-				scanline_->GetInsideMask();
-				poisson_->set_insidemask(scanline_->inside_mask_);
-				poisson_->PoissonInit(image_mat_);
-			}
-			if (shape_->type_ == Shape::kPolygon) {
-				shape_->update(0);
-				scanline_ = new ScanLine;
-				poisson_ = new Poisson;
-				is_choosing_ = false;
-				draw_status_ = kNone;
-				scanline_->InitPoints(shape_->get_polygon());
-				scanline_->GetInsideMask();
-				poisson_->set_insidemask(scanline_->inside_mask_);
-				poisson_->PoissonInit(image_mat_);
-			}
-		}
 
-	case kPaste:
-		if (is_pasting_) {
-			is_pasting_ = false;
-			draw_status_ = kNone;
-			image_mat_last_ = image_mat_.clone();
-		}
+		case kPaste:
+			if (is_pasting_) {
+				is_pasting_ = false;
+				draw_status_ = kNone;
+				image_mat_last_ = image_mat_.clone();
+			}
 
-	default:
-		break;
+		default:
+			break;
+		}
 	}
-
 	update();
 }
 
